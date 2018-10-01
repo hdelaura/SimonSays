@@ -6,11 +6,15 @@
 
 //* Haley DeLaura *//
 
-//int lights[] = { 10, 7, 9, 5 };
 int buttons[] = { 23, 25, 27, 29 };
 int sequence[100];
 int level = 1;
 int notes[] = {NOTE_D4, NOTE_C4, NOTE_A4, NOTE_B4};
+
+int shortTone = 40;
+int longTone = 200;
+int standardDelay = 67;
+int delayBetweenBars = 50;
 
 #define PIN1 11
 #define PIN2 10
@@ -21,6 +25,12 @@ Adafruit_NeoPixel ring1 = Adafruit_NeoPixel(7, PIN1, NEO_GRBW + NEO_KHZ800);
 Adafruit_NeoPixel ring2 = Adafruit_NeoPixel(16, PIN2, NEO_GRBW + NEO_KHZ800);
 Adafruit_NeoPixel ring3 = Adafruit_NeoPixel(7, PIN3, NEO_GRBW + NEO_KHZ800);
 Adafruit_NeoPixel ring4 = Adafruit_NeoPixel(16, PIN4, NEO_GRBW + NEO_KHZ800);
+
+uint32_t red = Adafruit_NeoPixel::Color(255, 0, 0); // Red
+uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0); // Yellow
+uint32_t green = Adafruit_NeoPixel::Color(0, 255, 0); // Green
+uint32_t blue = Adafruit_NeoPixel::Color(0, 0, 255); // Blue
+uint32_t black = Adafruit_NeoPixel::Color(0, 0, 0);
 
 void setup() {
   Serial.begin(9600);
@@ -41,41 +51,38 @@ void setup() {
   ring4.begin();
   ring4.show();
 
-  
-  
   // set pin modes to input/output
-//  playMelody();
+  // playMelody();
+  
   for (int i = 0; i < 4; i++) {
-    //pinMode(lights[i], OUTPUT);
     lightRing(ringForButton(i), ring1.Color(0, 0, 0), 0);
     pinMode(buttons[i], INPUT_PULLUP);
   }
+  
   // seed the random generator
   randomSeed(analogRead(A0));
   seedSequence();
 
-
-  // intro lights
   // display entire light sequence, one light at a time
-//  colorWipe(ring1.Color(255, 0, 0), 50); // Red
-//  colorWipe(ring2.Color(255, 0, 0), 50); // Red
-//  colorWipe(ring3.Color(255, 0, 0), 50); // Red
-//  colorWipe(ring4.Color(255, 0, 0), 50); // Red
+//  colorWipe(ring1.Color(255, 0, 0), 50); // color
+//  colorWipe(ring2.Color(255, 0, 0), 50); // color
+//  colorWipe(ring3.Color(255, 0, 0), 50); // color
+//  colorWipe(ring4.Color(255, 0, 0), 50); // color
 //  
 //  colorWipe(ring1.Color(0, 255, 0), 50); // Green
 //  colorWipe(ring2.Color(0, 255, 0), 50); // Green
 //  colorWipe(ring3.Color(0, 255, 0), 50); // Green
 //  colorWipe(ring4.Color(0, 255, 0), 50); // Green
 //  
-//  colorWipe(ring1.Color(0, 0, 255), 50); // Blue
-//  colorWipe(ring2.Color(0, 0, 255), 50); // Blue
-//  colorWipe(ring3.Color(0, 0, 255), 50); // Blue
-//  colorWipe(ring4.Color(0, 0, 255), 50); // Blue
+//  colorWipe(ring1.Color(0, 0, 255), 50); // color
+//  colorWipe(ring2.Color(0, 0, 255), 50); // color
+//  colorWipe(ring3.Color(0, 0, 255), 50); // color
+//  colorWipe(ring4.Color(0, 0, 255), 50); // color
 //  
-//  colorWipe(ring1.Color(0, 0, 0, 255), 50); // White RGBW
-//  colorWipe(ring2.Color(0, 0, 0, 255), 50); // White RGBW
-//  colorWipe(ring3.Color(0, 0, 0, 255), 50); // White RGBW
-//  colorWipe(ring4.Color(0, 0, 0, 255), 50); // White RGBW
+//  colorWipe(ring1.Color(255, 255, 0), 50); // Yellow
+//  colorWipe(ring2.Color(255, 255, 0), 50); // Yellow
+//  colorWipe(ring3.Color(255, 255, 0), 50); // Yellow
+//  colorWipe(ring4.Color(255, 255, 0), 50); // Yellow
 }
 
 void seedSequence() {
@@ -85,8 +92,7 @@ void seedSequence() {
   }
 }
 
-void loop() {
-      
+void loop() {   
     for (int i = 0; i < level; i++) {
       int s = sequence[i];
       tone(4, notes[s], 200);
@@ -98,8 +104,7 @@ void loop() {
   for (int i = 0; i < level; i++) {
     int b = waitForButton();
     if (b != sequence[i]) { 
-      // game over
-//      gameOver();
+      gameOver();
       level = 0;
       seedSequence();
     }
@@ -111,7 +116,6 @@ void loop() {
 int waitForButton() {
   // record the current time
   unsigned long now = millis();
-  // while(true) {
   while (millis() - now < 2000) {
     // check all four buttons
     for (int i = 0; i < 4; i++) {
@@ -119,7 +123,6 @@ int waitForButton() {
       if (digitalRead(buttons[i]) == LOW) {
         tone(4, notes[i]);
         lightRing(ringForButton(i), colorForButton(i), 50);
-
         while (digitalRead(buttons[i]) == LOW);
         // delay for a bit
         delay(150);
@@ -132,42 +135,269 @@ int waitForButton() {
   }
   return -1;
 }
+void lightsToSong(int i, uint32_t color, uint8_t wait) {
+  Adafruit_NeoPixel *ring;
+  if(i == 0) {
+    ring = &ring1;
+  } else if (i == 1) {
+    ring = &ring2;
+  } else if (i == 2) {
+    ring = &ring3;
+  } else {
+    ring = &ring4;
+  }
+  for(uint16_t j = 0; j < ring->numPixels(); j++) {
+    ring->setPixelColor(j, color);
+  }
+  ring->show();
+  delay(wait);
 
 
+  color = black;
+  for(uint16_t j = 0; j < ring->numPixels(); j++) {
+    ring->setPixelColor(j, color);
+  }
+  ring->show();
+}
 
 void playMelody() {
-  int melody[] = {
-  NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4
-};
-  int noteDurations[] = {
- 4, 8, 8, 4, 4, 4, 4, 4
-};
-  // iterate over the notes of the melody:
-  for (int thisNote = 0; thisNote < 14; thisNote++) {
-    // to calculate the note duration, take one second divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int noteDuration = 1000 / noteDurations[thisNote];
-    tone(4, melody[thisNote], noteDuration);
+  uint32_t color[] = { red, green, blue, yellow };
+  int i = 0;
+  
+  tone(4,  NOTE_B3, shortTone);
+ i++;
+ lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;
+ lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ delay(delayBetweenBars);
+ 
+    tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+     tone(4,  NOTE_E4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,NOTE_E4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_E4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_E4, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_E4, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_E4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_E4, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+ 
+     tone(4,  NOTE_D4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,NOTE_D4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_D4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_D4, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_D4, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_D4, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_D4, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+tone(4, NOTE_A3, longTone);
+i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ delay(delayBetweenBars);
+ 
+    tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+ tone(4, NOTE_E4, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ 
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], standardDelay);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ delay(delayBetweenBars);
 
-    // to distinguish the notes, set a minimum time between them.
-    // the note's duration + 30% seems to work well:
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
-    // stop the tone playing:
-    noTone(4);
-  }
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
+ tone(4,NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
+ tone(4,  NOTE_B3, shortTone);
+   i++;  lightsToSong(i%4, color[i%4], shortTone);
+  noTone(4);
+  i++;  lightsToSong(i%4, green, standardDelay);
+tone(4,  NOTE_B3, shortTone);
+  i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
+ tone(4,  NOTE_B3, shortTone);
+ i++;  lightsToSong(i%4, color[i%4], shortTone);
+ noTone(4);
+  i++;  lightsToSong(i%4, green, standardDelay);
+tone(4,  NOTE_B3, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
+ 
+tone(4, NOTE_E4, longTone);
+ i++;  lightsToSong(i%4, color[i%4], longTone);
+ noTone(4);
+ i++;  lightsToSong(i%4, green, standardDelay);
 }
 
 void gameOver() {
-  for (int i = 0; i <4; i+=1) {
-    rainbow(20);
-    rainbowCycle(20);
-    theaterChaseRainbow(50);
-//    lights on
-//    delay(450);
-//    lights off
-//    noTone(8);
-//    delay(450);.
+  for (int i = 0; i < 4; i += 1) {
+    for (int i = 0; i < 4; i++) {
+     lightRing(ringForButton(i), colorForButton(i), 50);
+     tone(4, notes[i]);
+     lightRing(ringForButton(i), ring1.Color(0, 0, 0), 0);
+    }
   }
   playMelody();
   delay(1000);
@@ -198,7 +428,7 @@ uint32_t colorForButton(int b) {
 }
 
 void lightRing(Adafruit_NeoPixel *ring, uint32_t color, uint8_t wait) {
-  for(uint16_t i=0; i<ring->numPixels(); i++) {
+  for(uint16_t i = 0; i < ring->numPixels(); i++) {
     ring->setPixelColor(i, color);
   }
   ring->show();
@@ -439,6 +669,5 @@ uint32_t Wheel(byte WheelPos) {
   return ring3.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
   return ring4.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
-
 
 
